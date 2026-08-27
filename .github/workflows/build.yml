@@ -103,12 +103,12 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
-      - name: Archive
+      - name: Archive for iOS Simulator
         run: |
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
-            -destination generic/platform=iOS \
+            -destination "generic/platform=iOS Simulator" \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
