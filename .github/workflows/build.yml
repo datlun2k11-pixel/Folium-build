@@ -20,11 +20,33 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm
           rm -rf .build
 
-      - name: Patch project.pbxproj to use forked AntiqueKit
+      - name: Patch AntiqueKit reference in project.pbxproj
         run: |
-          sed -i '' 's|https://github.com/jarrodnorwell/AntiqueKit|https://github.com/datlun2k11-pixel/AntiqueKit|g' Folium.xcodeproj/project.pbxproj
-          sed -i '' 's|8fb5c19247b65ac89f5ece5601ddc210d23dd023|32509aa781fa8ed87e0082932abfb46b4cf436a0|g' Folium.xcodeproj/project.pbxproj
-          grep -n "AntiqueKit" Folium.xcodeproj/project.pbxproj || echo "Không tìm thấy AntiqueKit trong pbxproj!"
+          python3 - <<'PYEOF'
+          import re
+          
+          with open("Folium.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+          
+          old_url = 'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";'
+          new_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
+          content = content.replace(old_url, new_url)
+          
+          old_req = '''requirement = {
+                      branch = main;
+                      kind = branch;
+                  };'''
+          new_req = '''requirement = {
+                      revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";
+                      kind = revision;
+                  };'''
+          content = content.replace(old_req, new_req)
+          
+          with open("Folium.xcodeproj/project.pbxproj", "w") as f:
+              f.write(content)
+          
+          print("✅ Successfully patched AntiqueKit reference!")
+          PYEOF
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
