@@ -73,7 +73,6 @@ jobs:
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
           
-          # Final verification
           checks = [
               ("datlun2k11-pixel/AntiqueKit", "AntiqueKit fork"),
               ("32509aa", "AntiqueKit hash"),
@@ -86,7 +85,7 @@ jobs:
               if check_str in content:
                   print(f"✅ {label} verified")
               else:
-                  print(f"⚠️ {label} NOT found in pbxproj")
+                  print(f"️ {label} NOT found in pbxproj")
           PYEOF
 
       - name: Force clean SPM cache
@@ -103,12 +102,17 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
-      - name: Archive for iOS Simulator
+      - name: Download iOS Platform
+        run: |
+          echo "Downloading iOS platform for device build..."
+          sudo xcodebuild -downloadPlatform iOS || echo "️ Platform download failed, trying build anyway..."
+
+      - name: Archive for iOS Device
         run: |
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
-            -destination "generic/platform=iOS Simulator" \
+            -destination "generic/platform=iOS" \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
