@@ -57,16 +57,17 @@ jobs:
           zstd_rep = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
           content = re.sub(zstd_pat, zstd_rep, content, flags=re.DOTALL)
 
-          # Boost header path
-          old_swift = 'SWIFT_VERSION = 6.0;'
-          new_swift = 'SWIFT_VERSION = 6.0;\n                HEADER_SEARCH_PATHS = "$(SOURCE_ROOT)/Boost $(SOURCE_ROOT)/SharedDependencies/Sources/nihstro/include";'
-          content = content.replace(old_swift, new_swift)
-
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
 
           print("Done patching pbxproj")
           PYEOF
+
+      - name: Verify Boost folder exists
+        run: |
+          echo "Checking Boost folder..."
+          ls -la Boost/ | head -20
+          find Boost -name "adapt_struct.hpp" 2>/dev/null || echo "⚠️ adapt_struct.hpp NOT FOUND in Boost folder!"
 
       - name: Force clean SPM cache
         run: |
@@ -93,6 +94,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             -parallelizeTargets \
+            HEADER_SEARCH_PATHS="$(PWD)/Boost $(PWD)/SharedDependencies/Sources/nihstro/include" \
             > build_log.txt 2>&1
           EXIT_CODE=$?
           echo "Exit code: $EXIT_CODE"
