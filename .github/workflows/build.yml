@@ -1,4 +1,4 @@
-name: Build Folium
+name: Build Polium
 
 on:
   push:
@@ -15,13 +15,6 @@ jobs:
       - name: Select Xcode 16.3
         run: sudo xcode-select -s /Applications/Xcode_16.3.app
 
-      # Fix: override AntiqueKit to a commit compatible with Swift 6.1
-      - name: Patch SPM dependency
-        run: |
-          sed -i '' 's|https://github.com/jarrodnorwell/AntiqueKit.git|https://github.com/jarrodnorwell/AntiqueKit.git|' Package.resolved || true
-          # Nếu repo có Package.resolved thì sửa trực tiếp commit hash ở đó
-          # Hoặc clone AntiqueKit và checkout commit cũ rồi trỏ local path
-          
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
