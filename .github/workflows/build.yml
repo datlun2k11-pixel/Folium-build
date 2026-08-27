@@ -92,8 +92,10 @@ jobs:
           echo "Downloading iOS Device Platform..."
           sudo xcodebuild -downloadPlatform iOS || echo "️ Download failed or already installed"
 
-      - name: Archive for iOS Device (Release)
+       - name: Archive for iOS Device (Release) [DEBUG]
         run: |
+          set +e
+          
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
@@ -101,4 +103,17 @@ jobs:
             -destination "generic/platform=iOS" \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            -showBuildTimingSummary \
+            > build_log.txt 2>&1
+          
+          EXIT_CODE=$?
+          echo "🔍 xcodebuild exit code: $EXIT_CODE"
+          
+          echo "=== LAST 100 LINES OF BUILD LOG ==="
+          tail -n 100 build_log.txt
+          
+          echo "=== SEARCHING FOR ERRORS ==="
+          grep -i "error\|fatal\|fail\|crash\|segmentation" build_log.txt || echo "No obvious errors found in log"
+          
+          exit $EXIT_CODE
