@@ -105,13 +105,14 @@ jobs:
       - name: Download iOS Platform
         run: |
           echo "Downloading iOS platform for device build..."
-          sudo xcodebuild -downloadPlatform iOS || echo "️ Platform download failed, trying build anyway..."
+          sudo xcodebuild -downloadPlatform iOS || echo "⚠️ Platform download failed, trying build anyway..."
 
-      - name: Archive for iOS Device
+      - name: Archive for iOS Device (Release)
         run: |
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
+            -configuration Release \
             -destination "generic/platform=iOS" \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
