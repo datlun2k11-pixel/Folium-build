@@ -17,24 +17,22 @@ jobs:
         with:
           xcode-version: '16.3'
 
-      - name: Install Boost headers to /usr/local/include
+      - name: Download Boost headers into nihstro package boundary
         run: |
           set -e
           echo "=== Downloading Boost 1.84.0 source ==="
           curl -L --fail -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
           tar -xzf boost.tar.gz
 
-          echo "=== Verifying ==="
           test -d boost_1_84_0/boost || { echo "FAIL: boost/ missing"; exit 1; }
           test -f boost_1_84_0/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: header missing"; exit 1; }
 
-          echo "=== Installing to /usr/local/include ==="
-          sudo mkdir -p /usr/local/include
-          sudo cp -r boost_1_84_0/boost /usr/local/include/
+          echo "=== Copying into SharedDependencies/Sources/nihstro/boost_deps ==="
+          mkdir -p SharedDependencies/Sources/nihstro/boost_deps
+          cp -r boost_1_84_0/boost SharedDependencies/Sources/nihstro/boost_deps/
 
-          echo "=== Verify install ==="
-          test -f /usr/local/include/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: not installed"; exit 1; }
-          echo "Boost headers installed at /usr/local/include/boost"
+          test -f SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: copy failed"; exit 1; }
+          echo "Boost headers copied into package boundary"
 
       - name: Clean SPM cache
         run: |
