@@ -1,60 +1,36 @@
-name: Build Folium IPA
+name: Build Folium
 
 on:
-  workflow_dispatch:
   push:
-    branches:
-      - main
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
 
 jobs:
   build:
     runs-on: macos-15
-
     steps:
-      - name: Checkout repository with submodules
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-          token: ${{ secrets.GITHUB_TOKEN }}
+      - uses: actions/checkout@v4
 
-      - name: Select Newest Xcode / Beta
+      - name: Select Xcode 16.3
+        run: sudo xcode-select -s /Applications/Xcode_16.3.app
+
+      # Fix: override AntiqueKit to a commit compatible with Swift 6.1
+      - name: Patch SPM dependency
         run: |
-          echo "Available Xcodes:"
-          ls -d /Applications/Xcode*
-          # Chọn bản Xcode Beta hoặc mới nhất trên runner (thường hỗ trợ Swift 6.2+)
-          if [ -d "/Applications/Xcode_16.3.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.3.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.2.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.2.app/Contents/Developer
-          elif [ -d "/Applications/Xcode_16.1_beta.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.1_beta.app/Contents/Developer
-          fi
-          swift --version
+          sed -i '' 's|https://github.com/jarrodnorwell/AntiqueKit.git|https://github.com/jarrodnorwell/AntiqueKit.git|' Package.resolved || true
+          # Nếu repo có Package.resolved thì sửa trực tiếp commit hash ở đó
+          # Hoặc clone AntiqueKit và checkout commit cũ rồi trỏ local path
+          
+      - name: Resolve packages
+        run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
-      - name: Clear SPM Cache
-        run: |
-          rm -rf ~/Library/Caches/org.swift.swiftpm/
-          rm -rf ~/Library/Developer/Xcode/DerivedData/
-
-      - name: Build Folium Archive
+      - name: Archive
         run: |
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
-            -destination 'generic/platform=iOS' \
+            -destination generic/platform=iOS \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO
-
-      - name: Export IPA
-        run: |
-          mkdir -p build/Payload
-          cp -R build/Folium.xcarchive/Products/Applications/Folium.app build/Payload/
-          cd build
-          zip -r Folium.ipa Payload
-
-      - name: Upload IPA Artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: Folium-IPA
-          path: build/Folium.ipa
