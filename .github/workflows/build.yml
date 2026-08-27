@@ -17,6 +17,25 @@ jobs:
         with:
           xcode-version: '16.3'
 
+      - name: Install Boost headers to /usr/local/include
+        run: |
+          set -e
+          echo "=== Downloading Boost 1.84.0 source ==="
+          curl -L --fail -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
+          tar -xzf boost.tar.gz
+
+          echo "=== Verifying ==="
+          test -d boost_1_84_0/boost || { echo "FAIL: boost/ missing"; exit 1; }
+          test -f boost_1_84_0/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: header missing"; exit 1; }
+
+          echo "=== Installing to /usr/local/include ==="
+          sudo mkdir -p /usr/local/include
+          sudo cp -r boost_1_84_0/boost /usr/local/include/
+
+          echo "=== Verify install ==="
+          test -f /usr/local/include/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: not installed"; exit 1; }
+          echo "Boost headers installed at /usr/local/include/boost"
+
       - name: Clean SPM cache
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm
@@ -42,53 +61,6 @@ jobs:
               f.write(content)
           print("pbxproj patched")
           PYEOF
-
-      - name: Download Boost headers and patch SharedDependencies
-        run: |
-          set -e
-          echo "=== Downloading Boost 1.84.0 ==="
-          curl -L --fail -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
-          tar -xzf boost.tar.gz
-
-          echo "=== Verifying extracted structure ==="
-          ls -d boost_1_84_0/boost || { echo "FAIL: boost/ dir missing"; exit 1; }
-          test -f boost_1_84_0/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: adapt_struct.hpp missing"; exit 1; }
-          echo "Boost source OK"
-
-          echo "=== Copying into nihstro ==="
-          mkdir -p SharedDependencies/Sources/nihstro/boost_deps
-          cp -r boost_1_84_0/boost SharedDependencies/Sources/nihstro/boost_deps/
-          test -f SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: copy failed"; exit 1; }
-          echo "Boost copied into nihstro/boost_deps"
-
-          echo "=== Patching Package.swift ==="
-          python3 << 'PYEOF'
-          path = "SharedDependencies/Package.swift"
-          with open(path, "r") as f:
-              content = f.read()
-
-          old = '.target(name: "nihstro",\n            publicHeadersPath: "include",\n            cxxSettings: [\n                .unsafeFlags([\n                    "-I/usr/local/include"\n                ])\n            ])'
-          new = '.target(name: "nihstro",\n            publicHeadersPath: "include",\n            cxxSettings: [\n                .headerSearchPath("boost_deps"),\n                .unsafeFlags([\n                    "-Iboost_deps"\n                ])\n            ])'
-
-          if old in content:
-              content = content.replace(old, new)
-              print("EXACT match replaced")
-          else:
-              # fallback: just replace the flag string
-              if '"-I/usr/local/include"' in content:
-                  content = content.replace('"-I/usr/local/include"', '"-Iboost_deps"')
-                  print("FALLBACK: flag string replaced")
-              else:
-                  print("ERROR: could not find nihstro include flag!")
-                  raise SystemExit(1)
-
-          with open(path, "w") as f:
-              f.write(content)
-          PYEOF
-
-          echo "=== Verify Package.swift patched ==="
-          grep -n "boost_deps" SharedDependencies/Package.swift || { echo "FAIL: Package.swift not patched"; exit 1; }
-          grep -n "usr/local/include" SharedDependencies/Package.swift && { echo "FAIL: old flag still present"; exit 1; } || echo "Old flag removed OK"
 
       - name: Force clean SPM cache
         run: |
