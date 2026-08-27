@@ -2,6 +2,14 @@
   "originHash" : "8ea1d6e60e6ea7278c0c094fd7e4c2e2d7e982a98604981c4b6eff049b3b825f",
   "pins" : [
     {
+      "identity" : "antiquekit",
+      "kind" : "remoteSourceControl",
+      "location" : "https://github.com/datlun2k11-pixel/AntiqueKit",
+      "state" : {
+        "revision" : "main"
+      }
+    },
+    {
       "identity" : "openssl",
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/krzyzanowskim/OpenSSL",
