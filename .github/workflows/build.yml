@@ -22,58 +22,50 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm
           rm -rf .build
 
-      - name: Patch project.pbxproj (URLs + Revisions + Boost Headers)
+      - name: Patch project.pbxproj
         run: |
-          python3 - <<'PYEOF'
+          python3 << 'PYEOF'
           import re
-          
+
           with open("Folium.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
-          
-          # === 1. PATCH DEPENDENCY URLS & REVISIONS ===
-          
+
           # AntiqueKit
-          old_ak_url = 'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";'
-          new_ak_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
-          if old_ak_url in content:
-              content = content.replace(old_ak_url, new_ak_url)
-          
-          ak_pattern = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
-          ak_replacement = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
-          content = re.sub(ak_pattern, ak_replacement, content, flags=re.DOTALL)
-          
+          content = content.replace(
+              'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";',
+              'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
+          )
+          ak_pat = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
+          ak_rep = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
+          content = re.sub(ak_pat, ak_rep, content, flags=re.DOTALL)
+
           # TPCircularBuffer
-          old_tpc_url = 'repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";'
-          new_tpc_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";'
-          if old_tpc_url in content:
-              content = content.replace(old_tpc_url, new_tpc_url)
-          
-          tpc_pattern = r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)'
-          tpc_replacement = r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3'
-          content = re.sub(tpc_pattern, tpc_replacement, content, flags=re.DOTALL)
-          
+          content = content.replace(
+              'repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";',
+              'repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";'
+          )
+          tpc_pat = r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)'
+          tpc_rep = r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3'
+          content = re.sub(tpc_pat, tpc_rep, content, flags=re.DOTALL)
+
           # zstd
-          old_zstd_url = 'repositoryURL = "https://github.com/jarrodnorwell/zstd";'
-          new_zstd_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/zstd";'
-          if old_zstd_url in content:
-              content = content.replace(old_zstd_url, new_zstd_url)
-          
-          zstd_pattern = r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)'
-          zstd_replacement = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
-          content = re.sub(zstd_pattern, zstd_replacement, content, flags=re.DOTALL)
-          
-          # === 2. ADD BOOST HEADER SEARCH PATH TO ALL CONFIGURATIONS ===
-          old_setting = 'SWIFT_VERSION = 6.0;'
-          new_setting = '''SWIFT_VERSION = 6.0;
-                      HEADER_SEARCH_PATHS = "$(SOURCE_ROOT)/Boost $(SOURCE_ROOT)/SharedDependencies/Sources/nihstro/include";'''
-          
-          count = content.count(old_setting)
-          content = content.replace(old_setting, new_setting)
-          
+          content = content.replace(
+              'repositoryURL = "https://github.com/jarrodnorwell/zstd";',
+              'repositoryURL = "https://github.com/datlun2k11-pixel/zstd";'
+          )
+          zstd_pat = r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)'
+          zstd_rep = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
+          content = re.sub(zstd_pat, zstd_rep, content, flags=re.DOTALL)
+
+          # Boost header path
+          old_swift = 'SWIFT_VERSION = 6.0;'
+          new_swift = 'SWIFT_VERSION = 6.0;\n                HEADER_SEARCH_PATHS = "$(SOURCE_ROOT)/Boost $(SOURCE_ROOT)/SharedDependencies/Sources/nihstro/include";'
+          content = content.replace(old_swift, new_swift)
+
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
-          
-          print(f"✅ Applied {count} header path injections + all dependency patches")
+
+          print("Done patching pbxproj")
           PYEOF
 
       - name: Force clean SPM cache
@@ -81,21 +73,17 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*antiquekit*
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*tpcircularbuffer*
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*zstd*
-          find ~/Library/Caches/org.swift.swiftpm \( -name "*antiquekit*" -o -name "*tpcircularbuffer*" -o -name "*zstd*" \) -exec rm -rf {} + 2>/dev/null || true
-          echo " Cache cleaned"
+          echo "Cache cleaned"
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
       - name: Download iOS Device Platform
-        run: |
-          echo "Downloading iOS Device Platform..."
-          sudo xcodebuild -downloadPlatform iOS || echo "️ Download failed or already installed"
+        run: sudo xcodebuild -downloadPlatform iOS || true
 
-       - name: Archive for iOS Device (Release) [DEBUG]
+      - name: Archive for iOS Device (Release)
         run: |
           set +e
-          
           xcodebuild archive \
             -project Folium.xcodeproj \
             -scheme Folium \
@@ -104,16 +92,10 @@ jobs:
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
-            -showBuildTimingSummary \
+            -parallelizeTargets \
             > build_log.txt 2>&1
-          
           EXIT_CODE=$?
-          echo "🔍 xcodebuild exit code: $EXIT_CODE"
-          
-          echo "=== LAST 100 LINES OF BUILD LOG ==="
-          tail -n 100 build_log.txt
-          
-          echo "=== SEARCHING FOR ERRORS ==="
-          grep -i "error\|fatal\|fail\|crash\|segmentation" build_log.txt || echo "No obvious errors found in log"
-          
+          echo "Exit code: $EXIT_CODE"
+          tail -n 150 build_log.txt
+          grep -iE "error:|fatal error:|failed|crash" build_log.txt || echo "No errors found in log"
           exit $EXIT_CODE
