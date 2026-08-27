@@ -63,13 +63,48 @@ jobs:
           print("Done patching pbxproj")
           PYEOF
 
-      - name: Download Boost headers
+      - name: Download Boost headers and patch SharedDependencies Package.swift
         run: |
           echo "Downloading Boost 1.84 headers..."
           curl -L -o boost.tar.gz https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
           tar -xzf boost.tar.gz
-          ls boost-1.84.0/libs/fusion/include/ | head -5
-          echo "Boost headers ready"
+
+          # Copy boost headers into nihstro source folder so SPM can reference them relatively
+          mkdir -p SharedDependencies/Sources/nihstro/boost_deps
+          cp -r boost-1.84.0/boost SharedDependencies/Sources/nihstro/boost_deps/
+
+          # Verify the required header exists
+          if [ -f "SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp" ]; then
+            echo "Boost header verified OK"
+          else
+            echo "ERROR: Boost header not found after copy!"
+            exit 1
+          fi
+
+          # Patch Package.swift: replace -I/usr/local/include with relative path to boost_deps
+          python3 << 'PYEOF'
+          with open("SharedDependencies/Package.swift", "r") as f:
+              content = f.read()
+
+          old_flag = '"-I/usr/local/include"'
+          new_flag = '"-ISharedDependencies/Sources/nihstro/boost_deps"'
+
+          # Note: SPM resolves headerSearchPath relative to target source dir,
+          # but unsafeFlags -I is relative to package root when building.
+          # We use a path that works from the package build context.
+          # Safer: use absolute via PWD won't work in Package.swift.
+          # Use headerSearchPath-style relative: from nihstro target dir -> boost_deps is sibling
+          new_flag = '"-Iboost_deps"'
+
+          if old_flag in content:
+              content = content.replace(old_flag, new_flag)
+              print("Patched nihstro include path")
+          else:
+              print("WARNING: -I/usr/local/include not found in Package.swift")
+
+          with open("SharedDependencies/Package.swift", "w") as f:
+              f.write(content)
+          PYEOF
 
       - name: Force clean SPM cache
         run: |
@@ -96,7 +131,6 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             -parallelizeTargets \
-            HEADER_SEARCH_PATHS="$(PWD)/boost-1.84.0 $(PWD)/SharedDependencies/Sources/nihstro/include" \
             > build_log.txt 2>&1
           EXIT_CODE=$?
           echo "Exit code: $EXIT_CODE"
