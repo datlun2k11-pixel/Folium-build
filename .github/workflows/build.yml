@@ -26,85 +26,69 @@ jobs:
         run: |
           python3 << 'PYEOF'
           import re
-
           with open("Folium.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
 
-          # AntiqueKit
-          content = content.replace(
-              'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";',
-              'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
-          )
-          ak_pat = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
-          ak_rep = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
-          content = re.sub(ak_pat, ak_rep, content, flags=re.DOTALL)
+          content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";','repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";')
+          content = re.sub(r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3', content, flags=re.DOTALL)
 
-          # TPCircularBuffer
-          content = content.replace(
-              'repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";',
-              'repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";'
-          )
-          tpc_pat = r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)'
-          tpc_rep = r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3'
-          content = re.sub(tpc_pat, tpc_rep, content, flags=re.DOTALL)
+          content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";','repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";')
+          content = re.sub(r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3', content, flags=re.DOTALL)
 
-          # zstd
-          content = content.replace(
-              'repositoryURL = "https://github.com/jarrodnorwell/zstd";',
-              'repositoryURL = "https://github.com/datlun2k11-pixel/zstd";'
-          )
-          zstd_pat = r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)'
-          zstd_rep = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
-          content = re.sub(zstd_pat, zstd_rep, content, flags=re.DOTALL)
+          content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/zstd";','repositoryURL = "https://github.com/datlun2k11-pixel/zstd";')
+          content = re.sub(r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3', content, flags=re.DOTALL)
 
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
-
-          print("Done patching pbxproj")
+          print("pbxproj patched")
           PYEOF
 
-      - name: Download Boost headers and patch SharedDependencies Package.swift
+      - name: Download Boost headers and patch SharedDependencies
         run: |
-          echo "Downloading Boost 1.84.0 source (with bundled headers)..."
-          curl -L -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
+          set -e
+          echo "=== Downloading Boost 1.84.0 ==="
+          curl -L --fail -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
           tar -xzf boost.tar.gz
 
-          # Verify the extracted folder structure
-          ls boost_1_84_0/ | head
-          if [ ! -d "boost_1_84_0/boost" ]; then
-            echo "ERROR: boost/ folder not found in extracted archive!"
-            exit 1
-          fi
+          echo "=== Verifying extracted structure ==="
+          ls -d boost_1_84_0/boost || { echo "FAIL: boost/ dir missing"; exit 1; }
+          test -f boost_1_84_0/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: adapt_struct.hpp missing"; exit 1; }
+          echo "Boost source OK"
 
-          # Copy boost headers into nihstro source folder
+          echo "=== Copying into nihstro ==="
           mkdir -p SharedDependencies/Sources/nihstro/boost_deps
           cp -r boost_1_84_0/boost SharedDependencies/Sources/nihstro/boost_deps/
+          test -f SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp || { echo "FAIL: copy failed"; exit 1; }
+          echo "Boost copied into nihstro/boost_deps"
 
-          # Verify the required header exists
-          if [ -f "SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp" ]; then
-            echo "Boost header verified OK"
-          else
-            echo "ERROR: adapt_struct.hpp not found after copy!"
-            exit 1
-          fi
-
-          # Patch Package.swift: replace -I/usr/local/include with -Iboost_deps
+          echo "=== Patching Package.swift ==="
           python3 << 'PYEOF'
-          with open("SharedDependencies/Package.swift", "r") as f:
+          path = "SharedDependencies/Package.swift"
+          with open(path, "r") as f:
               content = f.read()
 
-          old_flag = '"-I/usr/local/include"'
-          new_flag = '"-Iboost_deps"'
+          old = '.target(name: "nihstro",\n            publicHeadersPath: "include",\n            cxxSettings: [\n                .unsafeFlags([\n                    "-I/usr/local/include"\n                ])\n            ])'
+          new = '.target(name: "nihstro",\n            publicHeadersPath: "include",\n            cxxSettings: [\n                .headerSearchPath("boost_deps"),\n                .unsafeFlags([\n                    "-Iboost_deps"\n                ])\n            ])'
 
-          if old_flag in content:
-              content = content.replace(old_flag, new_flag)
-              print("Patched nihstro include path: -I/usr/local/include -> -Iboost_deps")
+          if old in content:
+              content = content.replace(old, new)
+              print("EXACT match replaced")
           else:
-              print("WARNING: -I/usr/local/include not found in Package.swift")
+              # fallback: just replace the flag string
+              if '"-I/usr/local/include"' in content:
+                  content = content.replace('"-I/usr/local/include"', '"-Iboost_deps"')
+                  print("FALLBACK: flag string replaced")
+              else:
+                  print("ERROR: could not find nihstro include flag!")
+                  raise SystemExit(1)
 
-          with open("SharedDependencies/Package.swift", "w") as f:
+          with open(path, "w") as f:
               f.write(content)
           PYEOF
+
+          echo "=== Verify Package.swift patched ==="
+          grep -n "boost_deps" SharedDependencies/Package.swift || { echo "FAIL: Package.swift not patched"; exit 1; }
+          grep -n "usr/local/include" SharedDependencies/Package.swift && { echo "FAIL: old flag still present"; exit 1; } || echo "Old flag removed OK"
 
       - name: Force clean SPM cache
         run: |
