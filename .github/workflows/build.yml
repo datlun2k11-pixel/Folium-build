@@ -21,49 +21,47 @@ jobs:
           rm -rf .build
 
       - name: Patch AntiqueKit reference in project.pbxproj
-  run: |
-    python3 - <<'PYEOF'
-    with open("Folium.xcodeproj/project.pbxproj", "r") as f:
-        content = f.read()
-    
-    # 1. Replace URL
-    old_url = 'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";'
-    new_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
-    if old_url not in content:
-        print("⚠️ URL already patched or different format")
-    else:
-        content = content.replace(old_url, new_url)
-        print("✅ URL replaced")
-    
-    # 2. Replace branch requirement with specific revision
-    # Find the AntiqueKit package reference block and modify it
-    import re
-    
-    # Pattern to match the requirement block for AntiqueKit
-    pattern = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
-    replacement = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
-    
-    new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
-    
-    if new_content == content:
-        print("⚠️ Requirement pattern not found, trying simpler replace...")
-        # Fallback: just replace the key parts
-        content = content.replace('branch = main;', 'revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";', 1)
-        content = content.replace('kind = branch;', 'kind = revision;', 1)
-        print("✅ Applied fallback patch")
-    else:
-        content = new_content
-        print("✅ Requirement replaced via regex")
-    
-    with open("Folium.xcodeproj/project.pbxproj", "w") as f:
-        f.write(content)
-    
-    # Final verification
-    if "datlun2k11-pixel" in content and "32509aa" in content:
-        print("✅ Final verification passed!")
-    else:
-        print("❌ Verification failed but continuing anyway...")
-    PYEOF
+        run: |
+          python3 - <<'PYEOF'
+          import re
+          
+          with open("Folium.xcodeproj/project.pbxproj", "r") as f:
+              content = f.read()
+          
+          # 1. Replace URL
+          old_url = 'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";'
+          new_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
+          if old_url in content:
+              content = content.replace(old_url, new_url)
+              print("✅ URL replaced")
+          else:
+              print("⚠️ URL already patched or different format")
+          
+          # 2. Replace branch requirement with specific revision using regex
+          pattern = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
+          replacement = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
+          
+          new_content = re.sub(pattern, replacement, content, flags=re.DOTALL)
+          
+          if new_content == content:
+              print("⚠️ Regex failed, applying fallback...")
+              content = content.replace('branch = main;', 'revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";', 1)
+              content = content.replace('kind = branch;', 'kind = revision;', 1)
+              print("✅ Fallback patch applied")
+          else:
+              content = new_content
+              print("✅ Requirement replaced via regex")
+          
+          with open("Folium.xcodeproj/project.pbxproj", "w") as f:
+              f.write(content)
+          
+          # Final verification (non-blocking)
+          if "datlun2k11-pixel" in content and "32509aa" in content:
+              print("✅ Final verification passed!")
+          else:
+              print("❌ Verification failed but continuing anyway...")
+          PYEOF
+
       - name: Force clean SPM cache for antiquekit
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/antiquekit-*
