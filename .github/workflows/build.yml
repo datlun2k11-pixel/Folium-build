@@ -63,11 +63,13 @@ jobs:
           print("Done patching pbxproj")
           PYEOF
 
-      - name: Verify Boost folder exists
+      - name: Download Boost headers
         run: |
-          echo "Checking Boost folder..."
-          ls -la Boost/ | head -20
-          find Boost -name "adapt_struct.hpp" 2>/dev/null || echo "⚠️ adapt_struct.hpp NOT FOUND in Boost folder!"
+          echo "Downloading Boost 1.84 headers..."
+          curl -L -o boost.tar.gz https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
+          tar -xzf boost.tar.gz
+          ls boost-1.84.0/libs/fusion/include/ | head -5
+          echo "Boost headers ready"
 
       - name: Force clean SPM cache
         run: |
@@ -94,7 +96,7 @@ jobs:
             CODE_SIGNING_ALLOWED=NO \
             CODE_SIGNING_REQUIRED=NO \
             -parallelizeTargets \
-            HEADER_SEARCH_PATHS="$(PWD)/Boost $(PWD)/SharedDependencies/Sources/nihstro/include" \
+            HEADER_SEARCH_PATHS="$(PWD)/boost-1.84.0 $(PWD)/SharedDependencies/Sources/nihstro/include" \
             > build_log.txt 2>&1
           EXIT_CODE=$?
           echo "Exit code: $EXIT_CODE"
