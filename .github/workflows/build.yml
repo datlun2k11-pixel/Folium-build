@@ -20,12 +20,11 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm
           rm -rf .build
 
-      - name: Force override AntiqueKit to fork
+      - name: Patch project.pbxproj to use forked AntiqueKit
         run: |
-          find . -name "*.pbxproj" -exec sed -i '' 's|jarrodnorwell/AntiqueKit|datlun2k11-pixel/AntiqueKit|g' {} \;
-          if [ -f Package.resolved ]; then
-            sed -i '' 's|jarrodnorwell/AntiqueKit|datlun2k11-pixel/AntiqueKit|g' Package.resolved
-          fi
+          sed -i '' 's|https://github.com/jarrodnorwell/AntiqueKit|https://github.com/datlun2k11-pixel/AntiqueKit|g' Folium.xcodeproj/project.pbxproj
+          sed -i '' 's|8fb5c19247b65ac89f5ece5601ddc210d23dd023|32509aa781fa8ed87e0082932abfb46b4cf436a0|g' Folium.xcodeproj/project.pbxproj
+          grep -n "AntiqueKit" Folium.xcodeproj/project.pbxproj || echo "Không tìm thấy AntiqueKit trong pbxproj!"
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
