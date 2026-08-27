@@ -23,8 +23,6 @@ jobs:
       - name: Patch AntiqueKit reference in project.pbxproj
         run: |
           python3 - <<'PYEOF'
-          import re
-          
           with open("Folium.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
           
@@ -45,8 +43,18 @@ jobs:
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
           
-          print("✅ Successfully patched AntiqueKit reference!")
+          if "datlun2k11-pixel/AntiqueKit" in content and "32509aa781fa8ed87e0082932abfb46b4cf436a0" in content:
+              print("✅ Patch verified successfully!")
+          else:
+              raise Exception("❌ Patch failed! Check pbxproj content.")
           PYEOF
+
+      - name: Force clean SPM cache for antiquekit
+        run: |
+          rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/antiquekit-*
+          rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/antiquekit-*
+          find ~/Library/Caches/org.swift.swiftpm -name "*antiquekit*" -type d -exec rm -rf {} + 2>/dev/null || true
+          echo "🧹 Cleaned all antiquekit caches"
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
