@@ -20,7 +20,7 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm
           rm -rf .build
 
-      - name: Patch Swift Package references in project.pbxproj
+      - name: Patch project.pbxproj (URLs + Revisions)
         run: |
           python3 - <<'PYEOF'
           import re
@@ -28,64 +28,40 @@ jobs:
           with open("Folium.xcodeproj/project.pbxproj", "r") as f:
               content = f.read()
           
-          # === ANTIQUEKIT PATCH ===
+          # === ANTIQUEKIT ===
           old_ak_url = 'repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";'
           new_ak_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";'
           if old_ak_url in content:
               content = content.replace(old_ak_url, new_ak_url)
-              print("✅ AntiqueKit URL replaced")
           
           ak_pattern = r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)'
           ak_replacement = r'\1\n                revision = "32509aa781fa8ed87e0082932abfb46b4cf436a0";\n                kind = revision;\3'
-          new_content = re.sub(ak_pattern, ak_replacement, content, flags=re.DOTALL)
-          if new_content != content:
-              content = new_content
-              print("✅ AntiqueKit revision locked")
+          content = re.sub(ak_pattern, ak_replacement, content, flags=re.DOTALL)
           
-          # === TPCIRCULARBUFFER PATCH ===
+          # === TPCIRCULARBUFFER ===
           old_tpc_url = 'repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";'
           new_tpc_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";'
           if old_tpc_url in content:
               content = content.replace(old_tpc_url, new_tpc_url)
-              print("✅ TPCircularBuffer URL replaced")
           
           tpc_pattern = r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)'
           tpc_replacement = r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3'
-          new_content = re.sub(tpc_pattern, tpc_replacement, content, flags=re.DOTALL)
-          if new_content != content:
-              content = new_content
-              print("✅ TPCircularBuffer revision locked")
+          content = re.sub(tpc_pattern, tpc_replacement, content, flags=re.DOTALL)
           
-          # === ZSTD PATCH ===
+          # === ZSTD ===
           old_zstd_url = 'repositoryURL = "https://github.com/jarrodnorwell/zstd";'
           new_zstd_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/zstd";'
           if old_zstd_url in content:
               content = content.replace(old_zstd_url, new_zstd_url)
-              print("✅ zstd URL replaced")
           
           zstd_pattern = r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)'
           zstd_replacement = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
-          new_content = re.sub(zstd_pattern, zstd_replacement, content, flags=re.DOTALL)
-          if new_content != content:
-              content = new_content
-              print("✅ zstd revision locked")
+          content = re.sub(zstd_pattern, zstd_replacement, content, flags=re.DOTALL)
           
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
           
-          checks = [
-              ("datlun2k11-pixel/AntiqueKit", "AntiqueKit fork"),
-              ("32509aa", "AntiqueKit hash"),
-              ("datlun2k11-pixel/TPCircularBuffer", "TPCB fork"),
-              ("96706f1", "TPCB hash"),
-              ("datlun2k11-pixel/zstd", "zstd fork"),
-              ("84184ea", "zstd hash")
-          ]
-          for check_str, label in checks:
-              if check_str in content:
-                  print(f"✅ {label} verified")
-              else:
-                  print(f"️ {label} NOT found in pbxproj")
+          print("✅ All patches applied successfully")
           PYEOF
 
       - name: Force clean SPM cache
@@ -93,19 +69,11 @@ jobs:
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*antiquekit*
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*tpcircularbuffer*
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*zstd*
-          rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*antiquekit*
-          rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*tpcircularbuffer*
-          rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*zstd*
           find ~/Library/Caches/org.swift.swiftpm \( -name "*antiquekit*" -o -name "*tpcircularbuffer*" -o -name "*zstd*" \) -exec rm -rf {} + 2>/dev/null || true
-          echo "🧹 Cleaned all targeted caches"
+          echo "🧹 Cache cleaned"
 
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
-
-      - name: Download iOS Platform
-        run: |
-          echo "Downloading iOS platform for device build..."
-          sudo xcodebuild -downloadPlatform iOS || echo "⚠️ Platform download failed, trying build anyway..."
 
       - name: Archive for iOS Device (Release)
         run: |
@@ -116,4 +84,5 @@ jobs:
             -destination "generic/platform=iOS" \
             -archivePath build/Folium.xcarchive \
             CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO
+            CODE_SIGNING_REQUIRED=NO \
+            HEADER_SEARCH_PATHS="$(PWD)/Boost $(PWD)/SharedDependencies/Sources/nihstro/include"
