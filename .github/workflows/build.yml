@@ -1,0 +1,44 @@
+name: Build Folium IPA
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    runs-on: macos-14
+
+    steps:
+      - name: Checkout repository with submodules
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Select Xcode
+        run: sudo xcode-select -s /Applications/Xcode_15.4.app/Contents/Developer
+
+      - name: Build Folium Archive
+        run: |
+          xcodebuild archive \
+            -project Folium.xcodeproj \
+            -scheme Folium \
+            -destination 'generic/platform=iOS' \
+            -archivePath build/Folium.xcarchive \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO
+
+      - name: Export IPA
+        run: |
+          mkdir -p build/Payload
+          cp -R build/Folium.xcarchive/Products/Applications/Folium.app build/Payload/
+          cd build
+          zip -r Folium.ipa Payload
+
+      - name: Upload IPA Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Folium-IPA
+          path: build/Folium.ipa
