@@ -143,9 +143,7 @@ let package = Package(
         .target(name: "nihstro",
                 publicHeadersPath: "include",
                 cxxSettings: [
-                    .unsafeFlags([
-                        "-I/usr/local/include"
-                    ])
+                    .headerSearchPath("boost_deps")
                 ]),
         .target(name: "nlohmann", publicHeadersPath: "include"),
         .target(name: "oaknut", publicHeadersPath: "include"),
