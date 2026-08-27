@@ -47,7 +47,7 @@ jobs:
               content = f.read()
 
           content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/AntiqueKit";','repositoryURL = "https://github.com/datlun2k11-pixel/AntiqueKit";')
-          content = re.sub(r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "d80280563e2329a3caf62062ffe9ec7bfc723107";\n                kind = revision;\3', content, flags=re.DOTALL)
+          content = re.sub(r'(E6A0FEEB3007EC92006FB733.*?requirement\s*=\s*\{)\s*(branch\s*=\s*main;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "1347d8f367438c7670c1c699e832dd45c328032c";\n                kind = revision;\3', content, flags=re.DOTALL)
 
           content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/TPCircularBuffer";','repositoryURL = "https://github.com/datlun2k11-pixel/TPCircularBuffer";')
           content = re.sub(r'(E656E9AD3006F7FF0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*master;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "96706f154822b7631962fdae6848dfb8930a6f3f";\n                kind = revision;\3', content, flags=re.DOTALL)
