@@ -56,6 +56,20 @@ jobs:
               content = new_content
               print("✅ TPCircularBuffer revision locked")
           
+          # === ZSTD PATCH ===
+          old_zstd_url = 'repositoryURL = "https://github.com/jarrodnorwell/zstd";'
+          new_zstd_url = 'repositoryURL = "https://github.com/datlun2k11-pixel/zstd";'
+          if old_zstd_url in content:
+              content = content.replace(old_zstd_url, new_zstd_url)
+              print("✅ zstd URL replaced")
+          
+          zstd_pattern = r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)'
+          zstd_replacement = r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3'
+          new_content = re.sub(zstd_pattern, zstd_replacement, content, flags=re.DOTALL)
+          if new_content != content:
+              content = new_content
+              print("✅ zstd revision locked")
+          
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
           
@@ -64,7 +78,9 @@ jobs:
               ("datlun2k11-pixel/AntiqueKit", "AntiqueKit fork"),
               ("32509aa", "AntiqueKit hash"),
               ("datlun2k11-pixel/TPCircularBuffer", "TPCB fork"),
-              ("96706f1", "TPCB hash")
+              ("96706f1", "TPCB hash"),
+              ("datlun2k11-pixel/zstd", "zstd fork"),
+              ("84184ea", "zstd hash")
           ]
           for check_str, label in checks:
               if check_str in content:
@@ -77,9 +93,11 @@ jobs:
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*antiquekit*
           rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*tpcircularbuffer*
+          rm -rf ~/Library/Caches/org.swift.swiftpm/repositories/*zstd*
           rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*antiquekit*
           rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*tpcircularbuffer*
-          find ~/Library/Caches/org.swift.swiftpm -name "*antiquekit*" -o -name "*tpcircularbuffer*" | xargs rm -rf 2>/dev/null || true
+          rm -rf ~/Library/Caches/org.swift.swiftpm/checkouts/*zstd*
+          find ~/Library/Caches/org.swift.swiftpm \( -name "*antiquekit*" -o -name "*tpcircularbuffer*" -o -name "*zstd*" \) -exec rm -rf {} + 2>/dev/null || true
           echo "🧹 Cleaned all targeted caches"
 
       - name: Resolve packages
