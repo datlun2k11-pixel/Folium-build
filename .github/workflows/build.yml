@@ -65,40 +65,40 @@ jobs:
 
       - name: Download Boost headers and patch SharedDependencies Package.swift
         run: |
-          echo "Downloading Boost 1.84 headers..."
-          curl -L -o boost.tar.gz https://github.com/boostorg/boost/releases/download/boost-1.84.0/boost-1.84.0.tar.gz
+          echo "Downloading Boost 1.84.0 source (with bundled headers)..."
+          curl -L -o boost.tar.gz https://archives.boost.io/release/1.84.0/source/boost_1_84_0.tar.gz
           tar -xzf boost.tar.gz
 
-          # Copy boost headers into nihstro source folder so SPM can reference them relatively
+          # Verify the extracted folder structure
+          ls boost_1_84_0/ | head
+          if [ ! -d "boost_1_84_0/boost" ]; then
+            echo "ERROR: boost/ folder not found in extracted archive!"
+            exit 1
+          fi
+
+          # Copy boost headers into nihstro source folder
           mkdir -p SharedDependencies/Sources/nihstro/boost_deps
-          cp -r boost-1.84.0/boost SharedDependencies/Sources/nihstro/boost_deps/
+          cp -r boost_1_84_0/boost SharedDependencies/Sources/nihstro/boost_deps/
 
           # Verify the required header exists
           if [ -f "SharedDependencies/Sources/nihstro/boost_deps/boost/fusion/include/adapt_struct.hpp" ]; then
             echo "Boost header verified OK"
           else
-            echo "ERROR: Boost header not found after copy!"
+            echo "ERROR: adapt_struct.hpp not found after copy!"
             exit 1
           fi
 
-          # Patch Package.swift: replace -I/usr/local/include with relative path to boost_deps
+          # Patch Package.swift: replace -I/usr/local/include with -Iboost_deps
           python3 << 'PYEOF'
           with open("SharedDependencies/Package.swift", "r") as f:
               content = f.read()
 
           old_flag = '"-I/usr/local/include"'
-          new_flag = '"-ISharedDependencies/Sources/nihstro/boost_deps"'
-
-          # Note: SPM resolves headerSearchPath relative to target source dir,
-          # but unsafeFlags -I is relative to package root when building.
-          # We use a path that works from the package build context.
-          # Safer: use absolute via PWD won't work in Package.swift.
-          # Use headerSearchPath-style relative: from nihstro target dir -> boost_deps is sibling
           new_flag = '"-Iboost_deps"'
 
           if old_flag in content:
               content = content.replace(old_flag, new_flag)
-              print("Patched nihstro include path")
+              print("Patched nihstro include path: -I/usr/local/include -> -Iboost_deps")
           else:
               print("WARNING: -I/usr/local/include not found in Package.swift")
 
