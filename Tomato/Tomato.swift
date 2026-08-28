@@ -7,6 +7,7 @@
 
 import Foundation
 import GLKit
+import CxxStdlib
 
 public enum TomatoButton : UInt8 {
     case a = 0
@@ -75,7 +76,7 @@ public actor TomatoSystem {
             tomato.is_running()
         }
         set {
-            tomato.is_running(true, newValue)
+            tomato.is_running(newValue)
         }
     }
     
@@ -90,7 +91,7 @@ public actor TomatoSystem {
             tomato.is_paused()
         }
         set {
-            tomato.is_paused(true, newValue)
+            tomato.is_paused(newValue)
         }
     }
     
