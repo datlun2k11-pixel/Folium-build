@@ -8,6 +8,7 @@
 import AVFoundation
 import Foundation
 import MetalKit
+import CxxStdlib
 
 public enum CytrusButton : Int32 {
     case a = 700
@@ -70,7 +71,7 @@ public actor CytrusSystem {
     
     public var running: Bool {
         get {
-            cytrus.is_running()
+            cytrus.is_running(false, false)
         }
         set {
             cytrus.is_running(true, newValue)
@@ -85,7 +86,7 @@ public actor CytrusSystem {
     
     public var paused: Bool {
         get {
-            cytrus.is_paused()
+            cytrus.is_paused(false, false)
         }
         set {
             cytrus.is_paused(true, newValue)
