@@ -226,9 +226,10 @@ struct MandarineCPP {
     
     std::filesystem::path mandarine_path, memory_cards_path, system_data_path;
     
-    std::jthread thread;
+    std::thread thread;
+    std::atomic<bool> stop_requested{false};
     std::mutex mutex;
-    std::condition_variable_any cv;
+    std::condition_variable cv;
 } m_cntnr;
 
 void mandarine::print_about(void) {
@@ -370,10 +371,11 @@ bool mandarine::is_running(bool change, bool set_running) {
 
 void mandarine::start(void) {
     m_cntnr.system->state = System::State::run;
-    m_cntnr.thread = std::jthread([&](std::stop_token token) {
+    m_cntnr.stop_requested.store(false);
+    m_cntnr.thread = std::thread([&]() {
         using namespace std::chrono;
         
-        while (!token.stop_requested()) {
+        while (!m_cntnr.stop_requested.load()) {
             switch (m_cntnr.system->state) {
                 case System::State::halted:
                     printf("halted\n");
@@ -403,7 +405,7 @@ void mandarine::start(void) {
 }
 
 void mandarine::stop(void) {
-    m_cntnr.thread.request_stop();
+    m_cntnr.stop_requested.store(true);
     if (m_cntnr.thread.joinable())
         m_cntnr.thread.join();
     
