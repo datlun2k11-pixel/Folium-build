@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CxxStdlib
 
 /*
  enum Button { A     = 0x01, B    = 0x02, SELECT = 0x04, START = 0x08,
@@ -76,7 +77,7 @@ public actor KiwiSystem {
     
     public var running: Bool {
         get {
-            kiwi.is_running()
+            kiwi.is_running(false, false)
         }
         set {
             kiwi.is_running(true, newValue)
@@ -91,7 +92,7 @@ public actor KiwiSystem {
     
     public var paused: Bool {
         get {
-            kiwi.is_paused()
+            kiwi.is_paused(false, false)
         }
         set {
             kiwi.is_paused(true, newValue)
