@@ -6,6 +6,7 @@
 //
 
 import Foundation
+import CxxStdlib
 
 public enum CherryButton : Int32, Codable {
     case button8 = 1,
@@ -85,7 +86,7 @@ public actor CherrySystem {
     
     public var running: Bool {
         get {
-            cherry.is_running()
+            cherry.is_running(false, false)
         }
         set {
             cherry.is_running(true, newValue)
@@ -100,7 +101,7 @@ public actor CherrySystem {
     
     public var paused: Bool {
         get {
-            cherry.is_paused()
+            cherry.is_paused(false, false)
         }
         set {
             cherry.is_paused(true, newValue)
