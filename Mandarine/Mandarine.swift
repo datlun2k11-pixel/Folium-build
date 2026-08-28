@@ -6,6 +6,7 @@
 //
 
 import UIKit
+import CxxStdlib
 
 public enum MandarineButton : UInt32, Codable {
     case circle = 0x00000001,
@@ -155,7 +156,7 @@ public actor MandarineSystem {
     
     public var running: Bool {
         get {
-            mandarine.is_running()
+            mandarine.is_running(false, false)
         }
         set {
             mandarine.is_running(true, newValue)
@@ -170,7 +171,7 @@ public actor MandarineSystem {
     
     public var paused: Bool {
         get {
-            mandarine.is_paused()
+            mandarine.is_paused(false, false)
         }
         set {
             mandarine.is_paused(true, newValue)
@@ -200,8 +201,8 @@ public actor MandarineSystem {
     public var framebufferWidth: Int32 {
         mandarine.framebuffer_width()
     }
-    
-    
+
+
     public nonisolated func videoBuffer15Bit(callback: mandarine.VideoBufferCallback15Bit) {
         mandarine.video_buffer_callback_15bit(callback)
     }
