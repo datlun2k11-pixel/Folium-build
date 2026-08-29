@@ -13,6 +13,8 @@
 #import <AudioUnit/AudioUnit.h>
 using namespace Cherry;
 
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <filesystem>
 #include <mutex>
@@ -269,10 +271,11 @@ struct CherryCPP {
     
     std::filesystem::path cherry_path, system_data_path;
     
-    std::jthread thread;
+    std::thread thread;
+    std::atomic<bool> stop_requested{false};
     std::mutex mutex;
-    std::atomic<bool> paused, running;
-    std::condition_variable_any cv;
+    std::atomic<bool> paused{false}, running{false};
+    std::condition_variable cv;
 } cherry_cntnr;
 
 void cherry::print_about(void) {
@@ -326,8 +329,11 @@ void cherry::insert_disc(std::string path) {
 }
 
 bool cherry::is_paused(bool change, bool set_paused) {
-    if (change)
+    if (change) {
         cherry_cntnr.paused.store(set_paused);
+        if (!set_paused)
+            cherry_cntnr.cv.notify_all();
+    }
     return cherry_cntnr.paused.load();
 }
 
@@ -338,19 +344,20 @@ bool cherry::is_running(bool change, bool set_running) {
 }
 
 void cherry::start(void) {
-    cherry_cntnr.thread = std::jthread([&](std::stop_token token) {
+    cherry_cntnr.stop_requested.store(false);
+    cherry_cntnr.thread = std::thread([&]() {
         using namespace std::chrono;
         
         const auto frameDuration = duration<double>(1.0 / (cherry_cntnr.system->GetCartridge()->IsPAL() ? 50.0 : 60.0));
 
-        while (!token.stop_requested()) {
+        while (!cherry_cntnr.stop_requested.load()) {
             {
                 std::unique_lock lock(cherry_cntnr.mutex);
-                cherry_cntnr.cv.wait(lock, token, []() {
-                    return !cherry_cntnr.paused.load();
+                cherry_cntnr.cv.wait(lock, []() {
+                    return !cherry_cntnr.paused.load() || cherry_cntnr.stop_requested.load();
                 });
                 
-                if (token.stop_requested())
+                if (cherry_cntnr.stop_requested.load())
                     break;
             }
             
@@ -373,7 +380,8 @@ void cherry::start(void) {
 }
 
 void cherry::stop(void) {
-    cherry_cntnr.thread.request_stop();
+    cherry_cntnr.stop_requested.store(true);
+    cherry_cntnr.cv.notify_all();
     if (cherry_cntnr.thread.joinable())
         cherry_cntnr.thread.join();
     

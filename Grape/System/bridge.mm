@@ -23,11 +23,14 @@ using namespace Grape;
 
 #include <_printf.h>
 #include <algorithm>
+#include <atomic>
+#include <chrono>
 #include <condition_variable>
 #include <cstdio>
 #include <filesystem>
 #include <fstream>
 #include <memory>
+#include <thread>
 #include <vector>
 
 #include <array>
@@ -101,10 +104,11 @@ struct Container {
     SDL_AudioDeviceID device{0};
     SDL_AudioStream* stream{nullptr};
     
-    std::jthread thread;
-    std::atomic<bool> paused, running;
+    std::thread thread;
+    std::atomic<bool> paused{false}, running{false};
+    std::atomic<bool> stop_requested{false};
     std::mutex mutex;
-    std::condition_variable_any cv;
+    std::condition_variable cv;
     uint32_t inputs;
     
     
@@ -254,10 +258,11 @@ void grape::insert_disc(std::string path) {
 }
 
 bool grape::is_paused(bool change, bool set_paused) {
-    if (change)
+    if (change) {
         cntnr.paused.store(set_paused);
-    if (!set_paused)
-        cntnr.cv.notify_all();
+        if (!set_paused)
+            cntnr.cv.notify_all();
+    }
     return cntnr.paused.load();
 }
 
@@ -268,19 +273,20 @@ bool grape::is_running(bool change, bool set_running) {
 }
 
 void grape::start(void) {
-    cntnr.thread = std::jthread([&](std::stop_token token) {
+    cntnr.stop_requested.store(false);
+    cntnr.thread = std::thread([&]() {
         using namespace std::chrono;
         
         const auto frameDuration = duration<double>(1.0 / 60.0);
         
-        while (!token.stop_requested()) {
+        while (!cntnr.stop_requested.load()) {
             {
                 std::unique_lock lock(cntnr.mutex);
-                cntnr.cv.wait(lock, token, []() {
-                    return !cntnr.paused.load();
+                cntnr.cv.wait(lock, []() {
+                    return !cntnr.paused.load() || cntnr.stop_requested.load();
                 });
                 
-                if (token.stop_requested())
+                if (cntnr.stop_requested.load())
                     break;
             }
             
@@ -309,7 +315,8 @@ void grape::stop(void) {
     NDS::Stop();
     NDS::DeInit();
     
-    cntnr.thread.request_stop();
+    cntnr.stop_requested.store(true);
+    cntnr.cv.notify_all();
     if (cntnr.thread.joinable())
         cntnr.thread.join();
     
