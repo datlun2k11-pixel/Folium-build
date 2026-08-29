@@ -33,10 +33,11 @@ struct CPPKiwi {
     uint32_t* fb{nullptr};
     uint32_t* ab{nullptr};
     
-    std::condition_variable_any cv;
+    std::condition_variable cv;
     std::mutex mutex;
     std::atomic<bool> paused, running;
-    std::jthread thread;
+    std::thread thread;
+    std::atomic<bool> stop_requested{false};
     
     uint32_t activeInput[8];
     
@@ -94,8 +95,11 @@ void kiwi::insert_disc(std::string path) {
 
 
 bool kiwi::is_paused(bool change, bool set_paused) {
-    if (change)
+    if (change) {
         cppKiwi.paused.store(set_paused);
+        if (!set_paused)
+            cppKiwi.cv.notify_all();
+    }
     return cppKiwi.paused.load();
 }
 
@@ -107,19 +111,20 @@ bool kiwi::is_running(bool change, bool set_running) {
 
 
 void kiwi::start(void) {
-    cppKiwi.thread = std::jthread([&](std::stop_token token) {
+    cppKiwi.stop_requested.store(false);
+    cppKiwi.thread = std::thread([&]() {
         using namespace std::chrono;
         
         const auto frameDuration = duration<double>(1.0 / 60.0);
         
-        while (!token.stop_requested()) {
+        while (!cppKiwi.stop_requested.load()) {
             {
                 std::unique_lock lock(cppKiwi.mutex);
-                cppKiwi.cv.wait(lock, token, []() {
-                    return !cppKiwi.paused.load();
+                cppKiwi.cv.wait(lock, []() {
+                    return !cppKiwi.paused.load() || cppKiwi.stop_requested.load();
                 });
                 
-                if (token.stop_requested())
+                if (cppKiwi.stop_requested.load())
                     break;
             }
             
@@ -141,7 +146,8 @@ void kiwi::start(void) {
 }
 
 void kiwi::stop(void) {
-    cppKiwi.thread.request_stop();
+    cppKiwi.stop_requested.store(true);
+    cppKiwi.cv.notify_all();
     if (cppKiwi.thread.joinable())
         cppKiwi.thread.join();
     
