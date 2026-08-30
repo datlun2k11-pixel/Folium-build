@@ -118,9 +118,6 @@ jobs:
       - name: Resolve packages
         run: xcodebuild -resolvePackageDependencies -project Folium.xcodeproj
 
-      - name: Download iOS Device Platform
-        run: sudo xcodebuild -downloadPlatform iOS || true
-
       - name: Archive for iOS Device (Release)
         run: |
           set +e
