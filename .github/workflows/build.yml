@@ -47,6 +47,28 @@ jobs:
           brew install vulkan-tools vulkan-headers
           echo "Vulkan SDK installed"
 
+      - name: Install VulkanMemoryAllocator header
+        run: |
+          set -e
+          echo "=== Downloading VulkanMemoryAllocator header ==="
+          # Prefer repo-bundled header if present, otherwise fetch from upstream
+          if [ -f "Cytrus/System/include/vk_mem_alloc.h" ]; then
+            echo "Using repo-bundled vk_mem_alloc.h"
+            sudo mkdir -p /opt/homebrew/include
+            sudo cp Cytrus/System/include/vk_mem_alloc.h /opt/homebrew/include/vk_mem_alloc.h
+            sudo mkdir -p /usr/local/include
+            sudo cp Cytrus/System/include/vk_mem_alloc.h /usr/local/include/vk_mem_alloc.h
+          else
+            curl -L --fail -o /tmp/vk_mem_alloc.h https://raw.githubusercontent.com/GPUOpen-LibrariesAndSDKs/VulkanMemoryAllocator/master/include/vk_mem_alloc.h
+            sudo mkdir -p /opt/homebrew/include
+            sudo cp /tmp/vk_mem_alloc.h /opt/homebrew/include/vk_mem_alloc.h
+            sudo mkdir -p /usr/local/include
+            sudo cp /tmp/vk_mem_alloc.h /usr/local/include/vk_mem_alloc.h
+          fi
+          test -f /opt/homebrew/include/vk_mem_alloc.h || { echo "FAIL: VMA header missing at /opt/homebrew/include"; exit 1; }
+          test -f /usr/local/include/vk_mem_alloc.h || { echo "FAIL: VMA header missing at /usr/local/include"; exit 1; }
+          echo "VMA header installed to system paths"
+
       - name: Clean SPM cache
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm
