@@ -90,9 +90,22 @@ jobs:
           content = content.replace('repositoryURL = "https://github.com/jarrodnorwell/zstd";','repositoryURL = "https://github.com/datlun2k11-pixel/zstd";')
           content = re.sub(r'(E656E9A03006F6CC0061EA22.*?requirement\s*=\s*\{)\s*(branch\s*=\s*dev;\s*kind\s*=\s*branch;)(\s*\};)', r'\1\n                revision = "84184ea0137866207e8f08bf9a797355534f7414";\n                kind = revision;\3', content, flags=re.DOTALL)
 
+          # Fix: bump deployment target for std::format / to_chars (requires iOS 16.4+, use 17.0)
+          content = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET = 16\.0;', 'IPHONEOS_DEPLOYMENT_TARGET = 17.0;', content)
+          content = re.sub(r'IPHONEOS_DEPLOYMENT_TARGET = 16\.6;', 'IPHONEOS_DEPLOYMENT_TARGET = 17.0;', content)
+          # Inject availability disable flag for C++ stdlib if not present
+          if "_LIBCPP_DISABLE_AVAILABILITY" not in content:
+              content = content.replace(
+                  '"-fbracket-depth=4096",',
+                  '"-fbracket-depth=4096",\n\t\t\t\t\t"-D_LIBCPP_DISABLE_AVAILABILITY",'
+              )
+              # fallback: add to all XCBuildConfiguration with CLANG_CXX_LANGUAGE_STANDARD if no bracket-depth found
+              if "_LIBCPP_DISABLE_AVAILABILITY" not in content:
+                  content = re.sub(r'(CLANG_CXX_LANGUAGE_STANDARD = "[^"]+";)', r'\1\n\t\t\t\tOTHER_CPLUSPLUSFLAGS = (\n\t\t\t\t\t"$(OTHER_CFLAGS)",\n\t\t\t\t\t"-D_LIBCPP_DISABLE_AVAILABILITY",\n\t\t\t\t);', content)
+
           with open("Folium.xcodeproj/project.pbxproj", "w") as f:
               f.write(content)
-          print("pbxproj patched")
+          print("pbxproj patched (incl deployment target + availability)")
           PYEOF
 
       - name: Force clean SPM cache
