@@ -42,6 +42,11 @@ jobs:
           test -f /opt/homebrew/include/boost/serialization/base_object.hpp || { echo "FAIL: system boost copy failed"; exit 1; }
           echo "Boost headers installed to system paths"
 
+      - name: Install Vulkan SDK
+        run: |
+          brew install vulkan-tools vulkan-headers
+          echo "Vulkan SDK installed"
+
       - name: Clean SPM cache
         run: |
           rm -rf ~/Library/Caches/org.swift.swiftpm
